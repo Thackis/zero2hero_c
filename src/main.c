@@ -24,6 +24,9 @@ int main() {
 
     printf("%s %s %s\n", val, val2, val3);
 
+
+    kv_put(table, "hehe", "second hand");
+
     // Print all entries in db store
     // [TODO] Update to print TOMBSTONE
     // for (int i = 0; i < table->capacity; i++) {

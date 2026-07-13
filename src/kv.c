@@ -103,7 +103,8 @@ int kv_put(kv_t *db, char *key, char *value) {
 		kv_entry_t *entry = &db->entries[real_idx];
 
 		// found the slot, and its empty
-		if (!entry->key) {
+		if (!entry->key || entry->key == (void *)TOMBSTONE) {
+		// if (!entry->key) {
 			char *newval = strdup(value);
 			char *newkey = strdup(key);
 
@@ -115,15 +116,15 @@ int kv_put(kv_t *db, char *key, char *value) {
 			}
 
 			// Check if found a tomestone, and if so, enter there instead
-			if (!first_tombstone) {
+			// if (!first_tombstone) {
 				entry->value = newval;
 				entry->key = newkey;
-			} else {
-				kv_entry_t *tomestone_entry = &db->entries[first_tombstone];
+			// } else {
+			// 	kv_entry_t *tomestone_entry = &db->entries[first_tombstone];
 
-				tomestone_entry->value = newval;
-				tomestone_entry->key = newkey;
-			}
+			// 	tomestone_entry->value = newval;
+			// 	tomestone_entry->key = newkey;
+			// }
 
 			db->count++;
 
