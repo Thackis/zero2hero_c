@@ -18,6 +18,39 @@ size_t hash(char *val, int capacity) {
     return hash % capacity;
 }
 
+// fn kv_get
+// params:
+//  - db: a points to the db
+//  - key: a pointer to the key value
+// returns: the pointer to the key, NULL if not found
+char *kv_get(kv_t *db, char *key) {
+    if (!db || !key) return NULL;
+    // if (!db || !key) return -1;
+
+    size_t idx = hash(key, db->capacity);
+
+    for (int i = 0; i < db->capacity -1; i++) {
+        size_t real_idx = (idx + i) % db->capacity;
+
+        kv_entry_t *entry = &db->entries[real_idx];
+
+        // is no key, therefore return nothing
+        if (entry->key == NULL) {
+            return NULL;
+        }
+
+        // find an entry and the keys match
+        if (entry->key
+            && entry->key != (void *)TOMBSTONE
+            && !strcmp(entry->key, key)
+        ) {
+            return entry->value;
+        }
+    }
+
+    return NULL;
+}
+
 // fn kv_put
 // params:
 //  - db: a points to the db
@@ -29,6 +62,7 @@ int kv_put(kv_t *db, char *key, char *value) {
     if (!db || !key || !value) return -1;
 
     size_t idx = hash(key, db->capacity);
+    size_t first_tombstone = 0;
 
     for (int i = 0; i < db->capacity -1; i++) {
         size_t real_idx = (idx + i) % db->capacity;
@@ -48,14 +82,16 @@ int kv_put(kv_t *db, char *key, char *value) {
             // return real_idx;
         }
 
-        // found the slot, and its empty or tombstone
-        // When probing for an empty slot, you can reuse a tombstone slot just
-        // like an empty one. However, you still need to keep probing past it to
-        // check whether the key already exists further down the chain. A clean
-        // way to handle this is to record the first tombstone you encounter, and
-        // then if you finish probing without finding a match, write the new entry
-        // into that saved tombstone slot.
-        if (!entry->key || entry->key == (void *)TOMBSTONE) {
+        // Found a tombstone, saving location
+        if (entry->key == (void *)TOMBSTONE
+            && !first_tombstone
+        ) {
+            first_tombstone = real_idx;
+            continue;
+        }
+
+        // found the slot, and its empty
+        if (!entry->key) {
             char *newval = strdup(value);
             char *newkey = strdup(key);
 
@@ -66,8 +102,16 @@ int kv_put(kv_t *db, char *key, char *value) {
                 return -1;
             }
 
-            entry->value = newval;
-            entry->key = newkey;
+            // Check if found a tomestone, and if so, enter there instead
+            if (!first_tombstone) {
+                entry->value = newval;
+                entry->key = newkey;
+            } else {
+                kv_entry_t *tomestone_entry = &db->entries[first_tombstone];
+
+                tomestone_entry->value = newval;
+                tomestone_entry->key = newkey;
+            }
 
             db->count++;
 

@@ -10,8 +10,15 @@ int main() {
 
     kv_put(table, "hehe", "haha");
     kv_put(table, "hehe", "hoho");
-    kv_put(table, "lala", "hoho");
+    kv_put(table, "lala", "baba");
 
+    char *val = kv_get(table, "hehe");
+    char *val2 = kv_get(table, "lala");
+    char *val3 = kv_get(table, "This_doesn't_exit");
+
+    printf("%s %s %s\n", val, val2, val3);
+
+    // Print all entries in db store
     for (int i = 0; i < table->capacity; i++) {
         if (table->entries[i].key) {
             printf(
