@@ -1,5 +1,7 @@
 #include <stdio.h>
-#include <kv.h>
+#include <string.h>
+#include <stdlib.h>
+#include "kv.h"
 
 int main() {
     kv_t *table = kv_init(1024);
@@ -24,19 +26,24 @@ int main() {
 
     printf("%s %s %s\n", val, val2, val3);
 
-
+    // Test reassigning to Tombstone
     kv_put(table, "hehe", "second hand");
 
     // Print all entries in db store
-    // [TODO] Update to print TOMBSTONE
-    // for (int i = 0; i < table->capacity; i++) {
-    //     if (table->entries[i].key) {
-    //         printf(
-    //             "[%d] %s: %s\n",
-    //             i,
-    //             table->entries[i].key,
-    //             table->entries[i].value
-    //         );
-    //     }
-    // }
+    for (size_t i = 0; i < table->capacity; i++) {
+        if (table->entries[i].key) {
+            printf(
+                "[%lu] %s: %s\n",
+                i,
+                table->entries[i].key,
+                table->entries[i].value
+            );
+        }
+    }
+
+    kv_free(table);
+    table = NULL;
+
+    char *test = kv_get(table, "hehe");
+    printf("%s\n", test);
 }

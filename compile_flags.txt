@@ -1,0 +1,7 @@
+-Iinc
+-Wall
+-Werror
+-Wextra
+-std=c99
+-lncurses
+-fsanitize=address

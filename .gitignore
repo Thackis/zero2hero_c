@@ -1,3 +1,11 @@
+# Code Editors
 .nova
 .vscode
+.idea
+
+# Mac
+.DS_Store
+
+# Temp
 /bin
+/obj

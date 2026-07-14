@@ -1,8 +1,7 @@
-#include <kv.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
-#define TOMBSTONE 0x1
+#include "kv.h"
 
 size_t hash(char *val, int capacity) {
 	size_t hash = 0x13371337deadbeef;
@@ -29,7 +28,7 @@ int kv_delete(kv_t *db, char *key) {
 
 	size_t idx = hash(key, db->capacity);
 
-	for (int i = 0; i < db->capacity -1; i++) {
+	for (size_t i = 0; i < db->capacity -1; i++) {
 		size_t real_idx = (idx + i) % db->capacity;
 
 		kv_entry_t *entry = &db->entries[real_idx];
@@ -65,7 +64,7 @@ char *kv_get(kv_t *db, char *key) {
 
 	size_t idx = hash(key, db->capacity);
 
-	for (int i = 0; i < db->capacity -1; i++) {
+	for (size_t i = 0; i < db->capacity -1; i++) {
 		size_t real_idx = (idx + i) % db->capacity;
 
 		kv_entry_t *entry = &db->entries[real_idx];
@@ -95,36 +94,38 @@ int kv_put(kv_t *db, char *key, char *value) {
 	if (!db || !key || !value) return -1;
 
 	size_t idx = hash(key, db->capacity);
-	size_t first_tombstone = 0;
+	size_t tombstone_slot = 0;
 
-	for (int i = 0; i < db->capacity -1; i++) {
+	for (size_t i = 0; i < db->capacity -1; i++) {
 		size_t real_idx = (idx + i) % db->capacity;
 
 		kv_entry_t *entry = &db->entries[real_idx];
 
-		// found the slot, and its empty
-		if (!entry->key || entry->key == (void *)TOMBSTONE) {
-		// if (!entry->key) {
-			char *newval = strdup(value);
-			char *newkey = strdup(key);
+		// Found a tombstone!
+		// Saving location if first instance, otherwise continue.
+		if (entry->key == (void *)TOMBSTONE) {
+			if (!tombstone_slot) tombstone_slot = real_idx;
 
-			if (!newval || !newkey) {
+			continue;
+		}
+
+		// found the slot, and its empty
+		if (!entry->key) {
+			char *newkey = strdup(key);
+			char *newval = strdup(value);
+
+			if (!newkey || !newval) {
 				free(newkey);
 				free(newval);
 
 				return -1;
 			}
 
-			// Check if found a tomestone, and if so, enter there instead
-			// if (!first_tombstone) {
-				entry->value = newval;
-				entry->key = newkey;
-			// } else {
-			// 	kv_entry_t *tomestone_entry = &db->entries[first_tombstone];
+			// Change entry to first tombstone location if tombstone was found.
+			if (tombstone_slot) entry = &db->entries[tombstone_slot];
 
-			// 	tomestone_entry->value = newval;
-			// 	tomestone_entry->key = newkey;
-			// }
+			entry->key = newkey;
+			entry->value = newval;
 
 			db->count++;
 
@@ -136,18 +137,13 @@ int kv_put(kv_t *db, char *key, char *value) {
 		if (!strcmp(entry->key, key)) {
 			char *newval = strdup(value);
 			if (!newval) return -1;
+
+			free(entry->value);
+
 			entry->value = newval;
 
 			return 0;
 			// return real_idx;
-		}
-
-		// Found a tombstone!
-		// Saving location if first instance, otherwise continue.
-		if (entry->key == (void *)TOMBSTONE
-			&& !first_tombstone
-		) {
-			first_tombstone = real_idx;
 		}
 	}
 
@@ -173,4 +169,37 @@ kv_t *kv_init(size_t capacity) {
 	}
 
 	return table;
+}
+
+// fn kv_free
+// params:
+//  - db: a points to the db
+// returns: 0 on success, -1 on failure
+// [NOTE]	This really should null out the pointer, because, why not? Just
+// 			because free does it that way, doesn't mean we need to make a user's
+//			life harder.
+void kv_free(kv_t *db) {
+// int kv_free(kv_t *db) {
+	if (!db) return;
+	// if (!db) return -1;
+
+	for (size_t i = 0; i < db->capacity - 1; i++) {
+		kv_entry_t *e = &db->entries[i];
+
+		if (e->key && e->key != (void *)TOMBSTONE) {
+			free(e->key);
+			free(e->value);
+
+			e->key = NULL;
+			e->value = NULL;
+
+			db->count--;
+		}
+	}
+
+	free(db->entries);
+	free(db);
+
+	return;
+	// return 0;
 }
